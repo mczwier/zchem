@@ -1,17 +1,10 @@
+import numpy as np
 from scipy.optimize import curve_fit
 
 class Model:
     def __init__(self):
         self._params = None
         self.param_names = None
-
-    def __call__(self, x, *args):
-        if args:
-            psrc = args
-        else:
-            psrc = self._params
-
-        return self._eval(x, psrc)
 
     def _set_params(self, params):
         self._params = np.array(params)
@@ -35,7 +28,8 @@ class GaussianModel(Model):
     def __init__(self, center, amplitude, width):
         self._set_params([center, amplitude, width])
 
-    def _eval(self, x, params):
+    def __call__(self, x):
+        params = self.params
         center = params[0]
         amplitude = params[1]
         width = params[2]
@@ -47,8 +41,8 @@ class LorentzianModel(Model):
     def __init__(self, center, amplitude, width):
         self._set_params([center, amplitude, width])
 
-    def _eval(self, x, params):
-
+    def __call__(self, x):
+        params = self.params
         center = params[0]
         amplitude = params[1]
         width = params[2]
@@ -59,7 +53,7 @@ class LorentzianModel(Model):
 
 class CompoundModel(Model):
     def __init__(self, models):
-        self.models = models
+        self.models = list(models)
 
 class SumModel(CompoundModel):
 
@@ -78,16 +72,12 @@ class SumModel(CompoundModel):
 
     params = property(_get_params, _set_params)
 
-    def __call__(self, x, *args):
-        result = 0
-
-        if args:
-            iargs = 0
-            for model in self.models:
-                nargs = len(model.params)
-                result += model(x, *args[iargs:iargs+nargs])
-                iargs+=nargs
+    def __call__(self, x):
+        if np.isscalar(x):
+            result = 0
         else:
-            for model in self.models:
-                result += model(x)
+            result = np.zeros_like(x)
+
+        for model in self.models:
+            result += model(x)
         return result
